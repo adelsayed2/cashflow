@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Construction Cash Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #13161e;
+    --surface2:  #1a1e28;
+    --border:    rgba(255,255,255,0.07);
+    --accent:    #4af0b0;
+    --accent2:   #378ADD;
+    --amber:     #f0a830;
+    --text:      #e8eaf0;
+    --muted:     #6b7280;
+    --mono:      'DM Mono', monospace;
+    --display:   'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  header h1 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  header .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .field input, .field select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+  }
+  .field select option { background: var(--surface2); }
+
+  .run-btn {
+    align-self: flex-end;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #0d0f14;
+    cursor: pointer;
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 10px 24px;
+    transition: opacity 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .run-btn:hover { opacity: 0.88; }
+  .run-btn:active { transform: scale(0.97); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── API URL display ── */
+  .api-url-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    padding: 8px 14px;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .api-url-bar span { color: var(--accent2); }
+
+  /* ── Summary cards ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .metric-value.accent { color: var(--accent); }
+  .metric-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Chart area ── */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .chart-canvas-wrap { position: relative; width: 100%; height: 300px; }
+
+  /* ── Phase bar ── */
+  .phase-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .phase-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .phase-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .export-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: none;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .export-btn:hover { opacity: 0.7; }
+  .table-scroll { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  thead { position: sticky; top: 0; background: var(--surface2); z-index: 1; }
+  th { padding: 10px 14px; text-align: right; color: var(--muted); font-weight: 400; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: 8px 14px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text); }
+  tr:hover td { background: var(--surface2); }
+  .phase-pill {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Error / loading ── */
+  .status-bar {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .status-bar.error   { background: rgba(220,50,50,0.1); border: 1px solid rgba(220,50,50,0.3); color: #f87171; display: block; }
+  .status-bar.loading { background: var(--surface); border: 1px solid var(--border); color: var(--muted); display: block; }
+
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Construction Cash Flow</h1>
+  <div class="pill">S-CURVE API</div>
+</header>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="field">
+    <label>Project name</label>
+    <input type="text" id="proj" value="Oryx GTL" placeholder="Optional">
+  </div>
+  <div class="field">
+    <label>Start date</label>
+    <input type="date" id="start" value="2022-01-01">
+  </div>
+  <div class="field">
+    <label>Completion date</label>
+    <input type="date" id="end" value="2025-09-01">
+  </div>
+  <div class="field">
+    <label>Total capital</label>
+    <input type="number" id="capital" value="100000000" step="1000000">
+  </div>
+  <div class="field">
+    <label>Currency</label>
+    <select id="currency">
+      <option>USD</option>
+      <option>AED</option>
+      <option>GBP</option>
+      <option>EUR</option>
+      <option>SAR</option>
+    </select>
+  </div>
+  <div class="field">
+    <button class="run-btn" onclick="fetchData()">Calculate ↗</button>
+  </div>
+</div>
+
+<!-- API URL preview -->
+<div class="api-url-bar" id="urlBar">
+  <span>GET</span> /api/cashflow?start_date=2022-01-01&amp;end_date=2025-09-01&amp;total_capital=100000000&amp;currency=USD
+</div>
+
+<div class="status-bar" id="statusBar"></div>
+
+<!-- Summary metrics -->
+<div class="metrics hidden" id="metrics"></div>
+
+<!-- Phase legend -->
+<div class="phase-row hidden" id="phaseRow">
+  <div class="phase-tag" style="background:rgba(55,138,221,0.1);color:#378ADD;">
+    <div class="phase-dot" style="background:#378ADD;"></div>Early ramp-up (0–40%)
+  </div>
+  <div class="phase-tag" style="background:rgba(74,240,176,0.1);color:#4af0b0;">
+    <div class="phase-dot" style="background:#4af0b0;"></div>Peak spend (40–80%)
+  </div>
+  <div class="phase-tag" style="background:rgba(240,168,48,0.1);color:#f0a830;">
+    <div class="phase-dot" style="background:#f0a830;"></div>Wind-down (80–120%)
+  </div>
+</div>
+
+<!-- Chart -->
+<div class="chart-wrap hidden" id="chartWrap">
+  <div class="chart-header">
+    <span class="chart-title" id="chartTitle">Cash Flow S-Curve</span>
+    <div class="legend">
+      <span><span class="legend-dot" style="background:#4af0b0;"></span>Cumulative</span>
+      <span><span class="legend-dot" style="background:#378ADD;"></span>Monthly spend</span>
+    </div>
+  </div>
+  <div class="chart-canvas-wrap">
+    <canvas id="cfChart" role="img" aria-label="S-curve construction cash flow chart"></canvas>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-wrap hidden" id="tableWrap">
+  <div class="table-header">
+    <span class="table-title">Monthly breakdown</span>
+    <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Date</th>
+          <th>% Time</th>
+          <th>Monthly spend</th>
+          <th>Cumulative</th>
+          <th>Cum %</th>
+          <th>Phase</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API_BASE = "";  // same origin on Render
+let chart = null;
+let currentData = null;
+
+const phaseColors = {
+  early:     { bg: 'rgba(55,138,221,0.35)',  text: '#378ADD',  label: 'Early'    },
+  peak:      { bg: 'rgba(74,240,176,0.35)',  text: '#4af0b0',  label: 'Peak'     },
+  wind_down: { bg: 'rgba(240,168,48,0.35)',  text: '#f0a830',  label: 'Wind-down'},
+};
+
+function fmtMoney(v, currency) {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1e9) return sign + currency + ' ' + (abs/1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return sign + currency + ' ' + (abs/1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return sign + currency + ' ' + (abs/1e3).toFixed(1) + 'K';
+  return sign + currency + ' ' + abs.toFixed(0);
+}
+
+function buildURL() {
+  const start   = document.getElementById('start').value;
+  const end     = document.getElementById('end').value;
+  const capital = document.getElementById('capital').value;
+  const cur     = document.getElementById('currency').value;
+  const proj    = document.getElementById('proj').value;
+  let url = `${API_BASE}/api/cashflow?start_date=${start}&end_date=${end}&total_capital=${capital}&currency=${cur}`;
+  if (proj) url += `&project_name=${encodeURIComponent(proj)}`;
+  return url;
+}
+
+function updateUrlBar() {
+  const url = buildURL();
+  document.getElementById('urlBar').innerHTML =
+    `<span style="color:#4af0b0">GET</span> ${url.replace(API_BASE, '<span style="color:#6b7280">')}`;
+}
+
+['start','end','capital','currency','proj'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updateUrlBar)
+);
+
+function setStatus(msg, type) {
+  const bar = document.getElementById('statusBar');
+  bar.textContent = msg;
+  bar.className = 'status-bar ' + type;
+}
+function clearStatus() {
+  document.getElementById('statusBar').className = 'status-bar';
+}
+
+async function fetchData() {
+  const btn = document.querySelector('.run-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+  setStatus('Fetching from API…', 'loading');
+
+  try {
+    const res = await fetch(buildURL());
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || res.statusText);
+    }
+    const data = await res.json();
+    currentData = data;
+    clearStatus();
+    renderAll(data);
+  } catch (e) {
+    setStatus('Error: ' + e.message + ' — API request failed — check the console for details', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Calculate ↗';
+  }
+}
+
+function renderAll(data) {
+  const { summary, monthly } = data;
+  const cur = summary.currency;
+
+  // Show sections
+  ['metrics','phaseRow','chartWrap','tableWrap'].forEach(id =>
+    document.getElementById(id).classList.remove('hidden')
+  );
+
+  // Summary metrics
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Total capital</div>
+      <div class="metric-value accent">${fmtMoney(summary.total_capital, cur)}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Duration</div>
+      <div class="metric-value">${summary.duration_months}<span style="font-size:0.7em;color:var(--muted)"> mo</span></div>
+      <div class="metric-sub">+ 20% tail → ${summary.effective_months} mo total</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Peak monthly spend</div>
+      <div class="metric-value">${fmtMoney(summary.peak_monthly_spend, cur)}</div>
+      <div class="metric-sub">Month ${summary.peak_month_number} · ${summary.peak_month_date}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">50% capital by</div>
+      <div class="metric-value">M${summary.half_capital_month}</div>
+      <div class="metric-sub">${summary.half_capital_date}</div>
+    </div>
+  `;
+
+  // Chart title
+  document.getElementById('chartTitle').textContent =
+    (summary.project_name || 'Project') + ' — Cash Flow S-Curve';
+
+  // Chart
+  renderChart(monthly, cur);
+
+  // Table
+  renderTable(monthly, cur);
+}
+
+function renderChart(monthly, cur) {
+  if (chart) chart.destroy();
+
+  const ctx = document.getElementById('cfChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: monthly.map(r => r.month_start.slice(0,7)),
+      datasets: [
+        {
+          type: 'line',
+          label: 'Cumulative',
+          data: monthly.map(r => r.cum_cashflow),
+          borderColor: '#4af0b0',
+          backgroundColor: 'rgba(74,240,176,0.06)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          borderWidth: 2,
+          yAxisID: 'yCum',
+          order: 1,
+        },
+        {
+          type: 'bar',
+          label: 'Monthly spend',
+          data: monthly.map(r => r.cashflow),
+          backgroundColor: monthly.map(r => phaseColors[r.phase]?.bg || 'rgba(55,138,221,0.3)'),
+          yAxisID: 'yMo',
+          order: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1e28',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          titleColor: '#e8eaf0',
+          bodyColor: '#9ca3af',
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: ctx => {
+              const cur2 = cur;
+              if (ctx.dataset.label === 'Cumulative')
+                return ` Cumulative: ${fmtMoney(ctx.parsed.y, cur2)} (${monthly[ctx.dataIndex].cum_pct.toFixed(1)}%)`;
+              return ` Monthly: ${fmtMoney(ctx.parsed.y, cur2)} (${monthly[ctx.dataIndex].period_pct.toFixed(2)}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#6b7280', font: { size: 10, family: "'DM Mono'" }, maxRotation: 45, autoSkip: true, maxTicksLimit: 14 },
+          grid: { color: 'rgba(255,255,255,0.03)' },
+        },
+        yCum: {
+          position: 'left',
+          ticks: { color: '#4af0b0', font: { size: 10, family: "'DM Mono'" }, callback: v => fmtMoney(v, cur) },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: `Cumulative (${cur})`, color: '#4af0b0', font: { size: 10 } },
+        },
+        yMo: {
+          position: 'right',
+          ticks: { color: '#378ADD', font: { size: 10, family: "'DM Mono'" }, callback: v => fmtMoney(v, cur) },
+          grid: { display: false },
+          title: { display: true, text: `Monthly (${cur})`, color: '#378ADD', font: { size: 10 } },
+        }
+      }
+    }
+  });
+}
+
+function renderTable(monthly, cur) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = monthly.map(r => {
+    const pc = phaseColors[r.phase] || phaseColors.early;
+    return `<tr>
+      <td style="color:var(--muted)">${r.month_number}</td>
+      <td>${r.month_start}</td>
+      <td style="color:var(--muted)">${r.pct_of_time.toFixed(1)}%</td>
+      <td style="color:#378ADD">${fmtMoney(r.cashflow, cur)}</td>
+      <td>${fmtMoney(r.cum_cashflow, cur)}</td>
+      <td style="color:var(--muted)">${r.cum_pct.toFixed(1)}%</td>
+      <td><span class="phase-pill" style="background:${pc.bg};color:${pc.text}">${pc.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportCSV() {
+  if (!currentData) return;
+  const { summary, monthly } = currentData;
+  const cur = summary.currency;
+  const header = 'month_number,month_start,pct_of_time,period_pct,cashflow,cum_pct,cum_cashflow,phase\n';
+  const rows = monthly.map(r =>
+    `${r.month_number},${r.month_start},${r.pct_of_time},${r.period_pct},${r.cashflow},${r.cum_pct},${r.cum_cashflow},${r.phase}`
+  ).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cashflow_${summary.project_name || 'project'}.csv`;
+  a.click();
+}
+
+updateUrlBar();
+</script>
+</body>
+</html>
