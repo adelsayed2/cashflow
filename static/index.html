@@ -368,10 +368,33 @@
     <div class="legend">
       <span><span class="legend-dot" style="background:#4af0b0;"></span>Cumulative</span>
       <span><span class="legend-dot" style="background:#378ADD;"></span>Monthly spend</span>
+      <span><span class="legend-dot" style="background:#e8eaf0;"></span>Milestone</span>
     </div>
   </div>
   <div class="chart-canvas-wrap">
     <canvas id="cfChart" role="img" aria-label="S-curve construction cash flow chart"></canvas>
+  </div>
+</div>
+
+<!-- Milestones Table -->
+<div class="table-wrap hidden" id="milestonesWrap">
+  <div class="table-header">
+    <span class="table-title" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px;">Milestone Schedule — Derived from S-Curve</span>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Milestone</th>
+          <th style="text-align: left;">Threshold</th>
+          <th>Target Date</th>
+          <th>Month</th>
+          <th>Capital Deployed</th>
+          <th>Phase</th>
+        </tr>
+      </thead>
+      <tbody id="milestonesBody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -474,10 +497,10 @@ async function fetchData() {
 }
 
 function renderAll(data) {
-  const { summary, monthly } = data;
+  const { summary, monthly, milestones } = data;
   const cur = summary.currency;
 
-  ['metrics','phaseRow','chartWrap','tableWrap'].forEach(id =>
+  ['metrics','phaseRow','chartWrap','milestonesWrap','tableWrap'].forEach(id =>
     document.getElementById(id).classList.remove('hidden')
   );
 
@@ -506,13 +529,32 @@ function renderAll(data) {
   document.getElementById('chartTitle').textContent =
     (summary.project_name || 'Project') + ' — Cash Flow S-Curve';
 
-  renderChart(monthly, cur);
+  renderChart(monthly, milestones, cur);
+  renderMilestones(milestones, cur);
   renderTable(monthly, cur);
 }
 
-function renderChart(monthly, cur) {
+function renderChart(monthly, milestones, cur) {
   if (chart) chart.destroy();
   const ctx = document.getElementById('cfChart').getContext('2d');
+  
+  const pointRadius = monthly.map(() => 0);
+  const pointBg = monthly.map(() => 'transparent');
+  const pointBorder = monthly.map(() => 'transparent');
+  const pointBorderWidth = monthly.map(() => 0);
+  
+  if (milestones) {
+    milestones.forEach(m => {
+      const m_num = parseInt(m.month_number.replace('M', ''));
+      const idx = monthly.findIndex(r => r.month_number === m_num);
+      if (idx !== -1) {
+        pointRadius[idx] = 6;
+        pointBg[idx] = phaseColors[m.phase] ? phaseColors[m.phase].text : '#fff';
+        pointBorder[idx] = '#fff';
+        pointBorderWidth[idx] = 2;
+      }
+    });
+  }
   chart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -526,7 +568,10 @@ function renderChart(monthly, cur) {
           backgroundColor: 'rgba(74,240,176,0.06)',
           fill: true,
           tension: 0.4,
-          pointRadius: 0,
+          pointRadius: pointRadius,
+          pointBackgroundColor: pointBg,
+          pointBorderColor: pointBorder,
+          pointBorderWidth: pointBorderWidth,
           borderWidth: 2,
           yAxisID: 'yCum',
           order: 1,
@@ -596,6 +641,22 @@ function renderTable(monthly, cur) {
       <td style="color:#378ADD">${fmtMoney(r.cashflow, cur)}</td>
       <td>${fmtMoney(r.cum_cashflow, cur)}</td>
       <td style="color:var(--muted)">${r.cum_pct.toFixed(1)}%</td>
+      <td><span class="phase-pill" style="background:${pc.bg};color:${pc.text}">${pc.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMilestones(milestones, cur) {
+  if (!milestones) return;
+  const tbody = document.getElementById('milestonesBody');
+  tbody.innerHTML = milestones.map(m => {
+    const pc = phaseColors[m.phase] || phaseColors.early;
+    return `<tr>
+      <td style="text-align: left; font-weight: 600; color: var(--text)">${m.id} — ${m.name}</td>
+      <td style="text-align: left; color:var(--muted)">${m.threshold}</td>
+      <td style="font-weight: 600">${m.target_date}</td>
+      <td style="color:var(--muted)">${m.month_number}</td>
+      <td style="font-family: var(--mono); font-weight: 600">${fmtMoney(m.capital_deployed, cur)}</td>
       <td><span class="phase-pill" style="background:${pc.bg};color:${pc.text}">${pc.label}</span></td>
     </tr>`;
   }).join('');

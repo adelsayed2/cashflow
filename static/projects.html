@@ -253,7 +253,10 @@ async function fetchProjects() {
 
   try {
     const res = await fetch('/api/projects');
-    if (!res.ok) throw new Error('API connection failed');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'API connection failed');
+    }
     allProjects = await res.json();
     renderProjects(allProjects);
     status.textContent = "Successfully synced " + allProjects.length + " projects.";
@@ -261,7 +264,9 @@ async function fetchProjects() {
   } catch (e) {
     status.textContent = "Error: " + e.message;
     status.style.color = "#f87171";
+    status.style.display = "block"; // Ensure it's visible
   }
+
 }
 
 function renderProjects(projects) {

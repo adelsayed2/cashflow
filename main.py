@@ -32,11 +32,17 @@ app.add_middleware(
 )
 
 def get_db_conn():
-    # Read environment variables inside the function to ensure we get the latest state
-    db_url = os.getenv("INTERNAL_DATABASE_URL") or os.getenv("DATABASE_URL")
+    # If on Render, prefer Internal URL. If local, prefer public DATABASE_URL.
+    is_render = os.getenv("RENDER") is not None
+    db_url = None
+    
+    if is_render:
+        db_url = os.getenv("INTERNAL_DATABASE_URL") or os.getenv("DATABASE_URL")
+    else:
+        db_url = os.getenv("DATABASE_URL") or os.getenv("INTERNAL_DATABASE_URL")
     
     if not db_url:
-        logger.error("Neither INTERNAL_DATABASE_URL nor DATABASE_URL found.")
+        logger.error("No database URL found in environment variables.")
         return None
     
     try:
@@ -46,10 +52,12 @@ def get_db_conn():
             separator = "&" if "?" in conn_str else "?"
             conn_str += f"{separator}sslmode=require"
             
-        return psycopg2.connect(conn_str, cursor_factory=RealDictCursor)
+        # Add a connect_timeout to prevent hanging the server on connection issues
+        return psycopg2.connect(conn_str, cursor_factory=RealDictCursor, connect_timeout=5)
     except Exception as e:
         logger.error(f"Database connection error: {e}")
         return None
+
 
 _A =  0.707205007505421
 _B = -0.0667363632084369
@@ -127,7 +135,31 @@ def _compute_cashflow(start: date, end: date, total_capital: float, currency: st
         "half_capital_month": mid50["month_number"],
         "half_capital_date":  mid50["month_start"],
     }
-    return summary, rows
+    
+    milestones_def = [
+        {"id": "M1", "name": "Mobilisation", "threshold": 10},
+        {"id": "M2", "name": "Quarter capital", "threshold": 25},
+        {"id": "M3", "name": "Half capital", "threshold": 50},
+        {"id": "M4", "name": "Three-quarter", "threshold": 75},
+        {"id": "M5", "name": "Practical compl.", "threshold": 90},
+        {"id": "M6", "name": "Final closeout", "threshold": 100},
+    ]
+    
+    milestones = []
+    for m_def in milestones_def:
+        target = m_def["threshold"]
+        m_row = next((r for r in rows if r["cum_pct"] >= target - 0.001), rows[-1])
+        milestones.append({
+            "id": m_def["id"],
+            "name": m_def["name"],
+            "threshold": f"{m_def['threshold']}% capital",
+            "target_date": m_row["month_start"][:7],
+            "month_number": f"M{m_row['month_number']}",
+            "capital_deployed": m_row["cum_cashflow"],
+            "phase": m_row["phase"]
+        })
+
+    return summary, rows, milestones
 
 @app.get("/api/health", tags=["health"])
 def health():
@@ -147,15 +179,20 @@ def health():
 def get_projects(limit: int = 50, offset: int = 0):
     conn = get_db_conn()
     if not conn:
-        # Provide more detail in the exception message for debugging
         db_url = os.getenv("DATABASE_URL")
         internal_url = os.getenv("INTERNAL_DATABASE_URL")
+        is_render = os.getenv("RENDER") is not None
+        
         detail = "Database connection failed. "
         if not db_url and not internal_url:
-            detail += "Missing environment variables."
+            detail += "Missing environment variables (DATABASE_URL/INTERNAL_DATABASE_URL)."
+        elif not is_render:
+            detail += "Local connection attempt timed out. Check if your IP is whitelisted on Render's Access Control or if you are using the correct External Database URL."
         else:
-            detail += "Check your database logs or network access."
+            detail += "Internal connection failed. Check Render's service logs."
+            
         raise HTTPException(status_code=503, detail=detail)
+
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM v_projects_summary LIMIT %s OFFSET %s", (limit, offset))
@@ -177,20 +214,20 @@ def get_cashflow(
     project_name:  str   = Query(None),
 ):
     try:
-        summary, rows = _compute_cashflow(start_date, end_date, total_capital, currency)
+        summary, rows, milestones = _compute_cashflow(start_date, end_date, total_capital, currency)
         summary["project_name"] = project_name
-        return JSONResponse({"summary": summary, "monthly": rows})
+        return JSONResponse({"summary": summary, "monthly": rows, "milestones": milestones})
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
 @app.post("/api/cashflow", tags=["cashflow"])
 def post_cashflow(body: CashFlowRequest):
     try:
-        summary, rows = _compute_cashflow(
+        summary, rows, milestones = _compute_cashflow(
             body.start_date, body.end_date, body.total_capital, body.currency
         )
         summary["project_name"] = body.project_name
-        return JSONResponse({"summary": summary, "monthly": rows})
+        return JSONResponse({"summary": summary, "monthly": rows, "milestones": milestones})
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
