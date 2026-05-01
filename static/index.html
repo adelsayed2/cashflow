@@ -527,7 +527,7 @@ function renderAll(data) {
   `;
 
   document.getElementById('chartTitle').textContent =
-    (summary.project_name || 'Project') + ' — Cash Flow S-Curve';
+    (summary.project_name || 'Project') + ' — ' + (summary.currency || 'USD') + ' Cash Flow';
 
   renderChart(monthly, milestones, cur);
   renderMilestones(milestones, cur);
@@ -558,7 +558,7 @@ function renderChart(monthly, milestones, cur) {
   chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: monthly.map(r => r.month_start.slice(0,7)),
+      labels: monthly.map(r => (r.month_start || '????-??').slice(0,7)),
       datasets: [
         {
           type: 'line',
@@ -691,11 +691,12 @@ async function checkParams() {
       currentData = data;
       
       // Update inputs to match stored data
-      document.getElementById('proj').value = data.summary.project_name;
-      document.getElementById('start').value = data.summary.start_date;
-      document.getElementById('end').value = data.summary.end_date;
-      document.getElementById('capital').value = data.summary.total_capital;
-      document.getElementById('currency').value = data.summary.currency;
+      document.getElementById('proj').value = (data.summary.project_name || '');
+      document.getElementById('start').value = (data.summary.start_date || '');
+      document.getElementById('end').value = (data.summary.end_date || '');
+      document.getElementById('capital').value = (data.summary.total_capital || 0);
+      document.getElementById('currency').value = (data.summary.currency || 'USD');
+
       
       clearStatus();
       renderAll(data);

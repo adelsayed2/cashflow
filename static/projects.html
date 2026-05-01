@@ -307,7 +307,7 @@ function renderProjects(projects) {
 function filterProjects() {
   const query = document.getElementById('searchInput').value.toLowerCase();
   const filtered = allProjects.filter(p => 
-    p.project_name.toLowerCase().includes(query)
+    (p.project_name || '').toLowerCase().includes(query)
   );
   renderProjects(filtered);
 }
