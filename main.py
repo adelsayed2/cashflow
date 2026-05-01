@@ -10,13 +10,18 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 app = FastAPI(
     title="Construction Cash Flow API",
     description="S-curve rational polynomial cash flow calculator and project manager",
-    version="1.1.0",
+    version="1.1.1",
 )
 
 app.add_middleware(
@@ -26,15 +31,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Prioritize Internal URL for Render-to-Render communication
+DATABASE_URL = os.getenv("INTERNAL_DATABASE_URL") or os.getenv("DATABASE_URL")
 
 def get_db_conn():
     if not DATABASE_URL:
+        logger.error("DATABASE_URL not found in environment variables.")
         return None
     try:
-        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        # On Render, external connections usually need sslmode=require
+        # We can append it if it's a render.com host and not already present
+        conn_str = DATABASE_URL
+        if "render.com" in conn_str and "sslmode" not in conn_str:
+            separator = "&" if "?" in conn_str else "?"
+            conn_str += f"{separator}sslmode=require"
+            
+        return psycopg2.connect(conn_str, cursor_factory=RealDictCursor)
     except Exception as e:
-        print(f"Database connection error: {e}")
+        logger.error(f"Database connection error: {e}")
         return None
 
 _A =  0.707205007505421
@@ -124,13 +138,18 @@ class CashFlowRequest(BaseModel):
 
 @app.get("/api/health", tags=["health"])
 def health():
-    return {"status": "ok", "version": "1.1.0", "db_connected": DATABASE_URL is not None}
+    return {
+        "status": "ok", 
+        "version": "1.1.1", 
+        "db_configured": DATABASE_URL is not None,
+        "environment": "render" if os.getenv("RENDER") else "local"
+    }
 
 @app.get("/api/projects", tags=["projects"])
 def get_projects(limit: int = 50, offset: int = 0):
     conn = get_db_conn()
     if not conn:
-        raise HTTPException(status_code=503, detail="Database not connected")
+        raise HTTPException(status_code=503, detail="Database connection failed. Ensure DATABASE_URL is set in Render Dashboard.")
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM v_projects_summary LIMIT %s OFFSET %s", (limit, offset))
@@ -140,6 +159,7 @@ def get_projects(limit: int = 50, offset: int = 0):
         return projects
     except Exception as e:
         if conn: conn.close()
+        logger.error(f"Query error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/cashflow", tags=["cashflow"])
