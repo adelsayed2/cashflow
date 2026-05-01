@@ -1,17 +1,22 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(
     title="Construction Cash Flow API",
-    description="S-curve rational polynomial cash flow calculator",
-    version="1.0.0",
+    description="S-curve rational polynomial cash flow calculator and project manager",
+    version="1.1.0",
 )
 
 app.add_middleware(
@@ -20,6 +25,17 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+def get_db_conn():
+    if not DATABASE_URL:
+        return None
+    try:
+        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        return None
 
 _A =  0.707205007505421
 _B = -0.0667363632084369
@@ -32,12 +48,10 @@ _H =  1.35120107553353e-7
 _I =  1.21646666783187e-7
 _J = -3.14406828446384e-10
 
-
 def _cumulative_pct(x: float) -> float:
     num = _A + _C*x + _E*x**2 + _G*x**3 + _I*x**4
     den = 1  + _B*x + _D*x**2 + _F*x**3 + _H*x**4 + _J*x**5
     return max(0.0, min(100.0, num / den))
-
 
 def _compute_cashflow(start: date, end: date, total_capital: float, currency: str):
     if end <= start:
@@ -101,7 +115,6 @@ def _compute_cashflow(start: date, end: date, total_capital: float, currency: st
     }
     return summary, rows
 
-
 class CashFlowRequest(BaseModel):
     start_date:    date
     end_date:      date
@@ -109,11 +122,25 @@ class CashFlowRequest(BaseModel):
     currency:      Optional[str] = "USD"
     project_name:  Optional[str] = None
 
-
 @app.get("/api/health", tags=["health"])
 def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "1.1.0", "db_connected": DATABASE_URL is not None}
 
+@app.get("/api/projects", tags=["projects"])
+def get_projects(limit: int = 50, offset: int = 0):
+    conn = get_db_conn()
+    if not conn:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM v_projects_summary LIMIT %s OFFSET %s", (limit, offset))
+        projects = cur.fetchall()
+        cur.close()
+        conn.close()
+        return projects
+    except Exception as e:
+        if conn: conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/cashflow", tags=["cashflow"])
 def get_cashflow(
@@ -130,7 +157,6 @@ def get_cashflow(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-
 @app.post("/api/cashflow", tags=["cashflow"])
 def post_cashflow(body: CashFlowRequest):
     try:
@@ -142,8 +168,7 @@ def post_cashflow(body: CashFlowRequest):
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-
-# Serve frontend — must be last
+# Serve frontend
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
