@@ -22,11 +22,11 @@ Extracts project data from SQLite and maps it to the PostgreSQL schema.
   - Projects with `Unknown` dates are skipped (mathematically required for S-Curves).
   - Projects with invalid ranges (Start >= End) are assigned a **minimum 1-month duration** to ensure they appear in the database.
 
-### 2. Metrics Refresh (`refresh_summaries.py`)
-Once data is migrated, this script runs the core S-Curve rational polynomial formula for every project.
-- **Project Summaries**: Populates `project_summary` with peak spend, peak dates, and half-capital milestones.
-- **Monthly Cashflows**: Generates month-by-month spend projections in `cashflow_monthly`.
-- **Performance**: Uses PostgreSQL `UPSERT` (ON CONFLICT) and `execute_values` for high-speed batch processing.
+### 2. Reactive Trigger Engine (PL/pgSQL)
+The synchronization is now **Reactive**. As soon as `migrate_sqlite.py` inserts or updates a project in PostgreSQL, a database trigger (`trg_recalculate_cashflow`) fires automatically.
+- **In-DB Calculation**: The S-curve formula is executed directly in the database using `pr_recalculate_cashflow()`.
+- **Instant Population**: `project_summary` and `cashflow_monthly` are populated in real-time, eliminating the need for a separate refresh script.
+- **Safety Floors**: The engine includes safeguards to handle extreme durations and incomplete data without crashing.
 
 ## 📊 Current Statistics (As of May 1, 2026)
 
@@ -34,9 +34,9 @@ Once data is migrated, this script runs the core S-Curve rational polynomial for
 | :--- | :--- |
 | **Total Projects Found in Source** | 2,165 |
 | **Cashflow-Optimized Candidates** | 316 |
-| **Successfully Migrated & Processed** | **317** (includes test/manual entries) |
-| **Monthly Periods Generated** | 18,158 |
-| **Skipped (Missing Dates)** | 71 |
+| **Successfully Migrated & Processed** | **179** (USD-Only Clean Slate) |
+| **Monthly Periods Generated** | 11,928 |
+| **Skipped (Missing/Unknown Dates)** | 48 |
 
 ## 🛠️ Management Commands
 

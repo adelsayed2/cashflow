@@ -284,21 +284,21 @@ function renderProjects(projects) {
     <div class="project-card">
       <div class="pc-header">
         <div class="pc-name" title="${p.project_name}">${p.project_name}</div>
-        <div class="pc-id">ID: ${p.id.slice(0,8)}...</div>
+        <div class="pc-id">ID: ${(p.id || '').slice(0,8)}...</div>
       </div>
       <div class="pc-body">
         <div class="pc-stat">
           <div class="pc-label">Total Capital</div>
-          <div class="pc-value accent">${fmtMoney(p.total_capital, p.currency)}</div>
+          <div class="pc-value accent">${fmtMoney(p.total_capital || 0, p.currency || 'USD')}</div>
         </div>
         <div class="pc-stat">
           <div class="pc-label">Duration</div>
-          <div class="pc-value">${Math.round(p.duration_months)} Months</div>
+          <div class="pc-value">${Math.round(p.duration_months || 0)} Months</div>
         </div>
       </div>
       <div class="pc-footer">
-        <div class="pc-dates">${p.start_date.slice(0,7)} — ${p.end_date.slice(0,7)}</div>
-        <a href="index.html?proj=${encodeURIComponent(p.project_name)}&start=${p.start_date}&end=${p.end_date}&capital=${p.total_capital}&currency=${p.currency}" class="pc-action">Analyze ↗</a>
+        <div class="pc-dates">${(p.start_date || '????-??').slice(0,7)} — ${(p.end_date || '????-??').slice(0,7)}</div>
+        <a href="index.html?id=${p.id}" class="pc-action">Analyze ↗</a>
       </div>
     </div>
   `).join('');

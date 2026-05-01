@@ -678,8 +678,33 @@ function exportCSV() {
 }
 
 // Deep linking logic
-function checkParams() {
+async function checkParams() {
   const params = new URLSearchParams(window.location.search);
+  
+  if (params.has('id')) {
+    const id = params.get('id');
+    setStatus('Loading persisted project data...', 'loading');
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${id}/cashflow`);
+      if (!res.ok) throw new Error("Could not fetch project detail");
+      const data = await res.json();
+      currentData = data;
+      
+      // Update inputs to match stored data
+      document.getElementById('proj').value = data.summary.project_name;
+      document.getElementById('start').value = data.summary.start_date;
+      document.getElementById('end').value = data.summary.end_date;
+      document.getElementById('capital').value = data.summary.total_capital;
+      document.getElementById('currency').value = data.summary.currency;
+      
+      clearStatus();
+      renderAll(data);
+    } catch (e) {
+      setStatus('Error: ' + e.message, 'error');
+    }
+    return;
+  }
+
   if (params.has('proj')) {
     document.getElementById('proj').value = params.get('proj');
     document.getElementById('start').value = params.get('start');

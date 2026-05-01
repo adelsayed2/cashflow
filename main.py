@@ -205,6 +205,89 @@ def get_projects(limit: int = 50, offset: int = 0):
         logger.error(f"Query error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/projects/{project_id}/cashflow", tags=["projects"])
+def get_project_cashflow(project_id: str):
+    conn = get_db_conn()
+    if not conn:
+        raise HTTPException(status_code=503, detail="Database connection failed")
+
+    try:
+        cur = conn.cursor()
+        
+        # 1. Fetch Summary
+        cur.execute("SELECT * FROM v_projects_summary WHERE id = %s", (project_id,))
+        summary = cur.fetchone()
+        if not summary:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # 2. Fetch Monthly Data
+        cur.execute("SELECT * FROM cashflow_monthly WHERE project_id = %s ORDER BY month_number", (project_id,))
+        monthly = cur.fetchall()
+
+        # 3. Calculate Milestones (thresholds)
+        milestones_def = [
+            {"id": "M1", "name": "Mobilisation", "threshold": 10},
+            {"id": "M2", "name": "Quarter capital", "threshold": 25},
+            {"id": "M3", "name": "Half capital", "threshold": 50},
+            {"id": "M4", "name": "Three-quarter", "threshold": 75},
+            {"id": "M5", "name": "Practical compl.", "threshold": 90},
+            {"id": "M6", "name": "Final closeout", "threshold": 100},
+        ]
+        
+        milestones = []
+        for m_def in milestones_def:
+            target = m_def["threshold"]
+            m_row = next((r for r in monthly if r["cum_pct"] >= target - 0.001), monthly[-1] if monthly else None)
+            if m_row:
+                milestones.append({
+                    "id": m_def["id"],
+                    "name": m_def["name"],
+                    "threshold": f"{m_def['threshold']}% capital",
+                    "target_date": m_row["month_start"].isoformat()[:7] if hasattr(m_row["month_start"], 'isoformat') else str(m_row["month_start"])[:7],
+                    "month_number": f"M{m_row['month_number']}",
+                    "capital_deployed": float(m_row["cum_cashflow"]),
+                    "phase": m_row["phase"]
+                })
+
+        cur.close()
+        conn.close()
+        
+        # Convert summary to match _compute_cashflow structure for frontend compatibility
+        formatted_summary = {
+            "project_name":       summary["project_name"],
+            "start_date":         summary["start_date"].isoformat(),
+            "end_date":           summary["end_date"].isoformat(),
+            "duration_months":    float(summary["duration_months"]),
+            "effective_months":   summary.get("effective_months", len(monthly)-1),
+            "total_capital":      float(summary["total_capital"]),
+            "currency":           summary["currency"],
+            "peak_monthly_spend": float(summary["peak_monthly_spend"]) if summary["peak_monthly_spend"] else 0,
+            "peak_month_number":  summary["peak_month_number"],
+            "peak_month_date":    summary["peak_month_date"].isoformat() if summary["peak_month_date"] else None,
+            "half_capital_month": summary["half_capital_month"],
+            "half_capital_date":  summary["half_capital_date"].isoformat() if summary["half_capital_date"] else None,
+        }
+
+        # Format monthly rows
+        formatted_monthly = []
+        for r in monthly:
+            formatted_monthly.append({
+                "month_number": r["month_number"],
+                "month_start":  r["month_start"].isoformat(),
+                "pct_of_time":  float(r["pct_of_time"]),
+                "cum_pct":      float(r["cum_pct"]),
+                "period_pct":   float(r["period_pct"]),
+                "cashflow":     float(r["cashflow"]),
+                "cum_cashflow": float(r["cum_cashflow"]),
+                "phase":        r["phase"]
+            })
+
+        return JSONResponse({"summary": formatted_summary, "monthly": formatted_monthly, "milestones": milestones})
+    except Exception as e:
+        if conn: conn.close()
+        logger.error(f"Cashflow detail error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/cashflow", tags=["cashflow"])
 def get_cashflow(
     start_date:    date  = Query(...),

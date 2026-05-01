@@ -19,10 +19,9 @@ case "$1" in
   sync)
     echo "Migrating data from SQLite..."
     ./venv/bin/python3 scratch/migrate_sqlite.py
-    echo "Refreshing summaries and cashflows..."
-    PYTHONPATH=. ./venv/bin/python3 scratch/refresh_summaries.py
-    echo "Sync complete!"
+    echo "Sync complete! (Reactive triggers have populated the forecasts)"
     ;;
+
   push)
     ./push_to_render.sh
     ;;

@@ -20,21 +20,25 @@ def migrate():
     pg_conn = psycopg2.connect(POSTGRES_URL)
     pg_cur = pg_conn.cursor()
     
+    # Perform a Clean Slate Sync: Wiping existing PG data to eliminate duplicates
+    print("Performing Clean Slate Sync: Truncating projects table...")
+    pg_cur.execute("TRUNCATE projects CASCADE;")
+    pg_conn.commit()
+
     # Fetch data from SQLite
-    # We prioritize budget_value_usd and ensure dates are not empty
+    # We strictly use budget_value_usd and force currency to USD
     sl_cur.execute("""
         SELECT 
             project_id, 
             name, 
             start_date, 
             completion_date, 
-            COALESCE(budget_value_usd, budget_value) as budget, 
-            budget_currency 
+            budget_value_usd 
         FROM projects 
         WHERE name IS NOT NULL AND name != ''
           AND start_date IS NOT NULL AND start_date != ''
           AND completion_date IS NOT NULL AND completion_date != ''
-          AND (budget_value_usd IS NOT NULL OR budget_value IS NOT NULL)
+          AND budget_value_usd IS NOT NULL AND budget_value_usd > 0
     """)
 
     
@@ -45,7 +49,7 @@ def migrate():
     skipped_count = 0
     
     for row in rows:
-        p_id, name, start, end, budget, currency = row
+        p_id, name, start, end, budget = row
         
         def parse_date(d_str):
             if not d_str or d_str.lower() == 'unknown':
@@ -76,7 +80,6 @@ def migrate():
             d2 = d1 + relativedelta(months=1)
             duration = 1
             print(f"Warning {name}: Start date ({start}) >= End date ({end}). Forcing 1 month duration.")
-
             
         # Ensure UUID is valid format
         try:
@@ -90,9 +93,10 @@ def migrate():
             d1.strftime('%Y-%m-%d'),
             d2.strftime('%Y-%m-%d'),
             float(budget),
-            currency or 'USD',
+            'USD',
             float(duration)
         ))
+
 
     if not data_to_insert:
         print("No valid data to migrate.")
