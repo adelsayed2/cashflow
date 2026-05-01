@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Database — Construction Cash Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #13161e;
+    --surface2:  #1a1e28;
+    --border:    rgba(255,255,255,0.07);
+    --accent:    #4af0b0;
+    --accent2:   #378ADD;
+    --text:      #e8eaf0;
+    --muted:     #6b7280;
+    --mono:      'DM Mono', monospace;
+    --display:   'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+  }
+  .brand h1 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+  .brand .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  .nav-back {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-back:hover { color: var(--text); }
+
+  /* ── Search & Filters ── */
+  .search-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    align-items: center;
+  }
+  .search-input {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: var(--display);
+    font-size: 1rem;
+    flex-grow: 1;
+    outline: none;
+  }
+  .project-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ── Grid ── */
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  .project-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 220px;
+  }
+  .project-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent2);
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+  }
+  .project-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .project-card:hover::before { opacity: 1; }
+
+  .pc-header { margin-bottom: 1rem; }
+  .pc-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pc-id {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .pc-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 1.5rem;
+  }
+  .pc-stat { display: flex; flex-direction: column; gap: 4px; }
+  .pc-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .pc-value { font-size: 14px; font-weight: 600; }
+  .pc-value.accent { color: var(--accent); }
+
+  .pc-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  .pc-dates {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .pc-action {
+    background: var(--accent2);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+  .pc-action:hover { opacity: 0.9; }
+
+  /* ── Status Bar ── */
+  #statusBar {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    display: none;
+    z-index: 100;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Project Database</h1>
+    <div class="pill">CENTRAL REPOSITORY</div>
+  </div>
+  <a href="index.html" class="nav-back">← Back to Calculator</a>
+</header>
+
+<div class="search-bar">
+  <input type="text" id="searchInput" class="search-input" placeholder="Filter projects by name or country..." oninput="filterProjects()">
+  <div class="project-count" id="projectCount">0 Projects found</div>
+</div>
+
+<div class="projects-grid" id="projectsGrid">
+  <!-- Dynamic cards -->
+</div>
+
+<div id="statusBar"></div>
+
+<script>
+let allProjects = [];
+
+function fmtMoney(v, currency) {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1e9) return sign + currency + ' ' + (abs/1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return sign + currency + ' ' + (abs/1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return sign + currency + ' ' + (abs/1e3).toFixed(1) + 'K';
+  return sign + currency + ' ' + abs.toFixed(0);
+}
+
+async function fetchProjects() {
+  const grid = document.getElementById('projectsGrid');
+  const status = document.getElementById('statusBar');
+  
+  status.textContent = "Fetching projects from database...";
+  status.style.display = "block";
+
+  try {
+    const res = await fetch('/api/projects');
+    if (!res.ok) throw new Error('API connection failed');
+    allProjects = await res.json();
+    renderProjects(allProjects);
+    status.textContent = "Successfully synced " + allProjects.length + " projects.";
+    setTimeout(() => { status.style.display = "none"; }, 3000);
+  } catch (e) {
+    status.textContent = "Error: " + e.message;
+    status.style.color = "#f87171";
+  }
+}
+
+function renderProjects(projects) {
+  const grid = document.getElementById('projectsGrid');
+  const count = document.getElementById('projectCount');
+  
+  count.textContent = projects.length + " Projects found";
+  
+  if (projects.length === 0) {
+    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--muted); padding: 4rem;">No projects found matching your criteria.</div>';
+    return;
+  }
+
+  grid.innerHTML = projects.map(p => `
+    <div class="project-card">
+      <div class="pc-header">
+        <div class="pc-name" title="${p.project_name}">${p.project_name}</div>
+        <div class="pc-id">ID: ${p.id.slice(0,8)}...</div>
+      </div>
+      <div class="pc-body">
+        <div class="pc-stat">
+          <div class="pc-label">Total Capital</div>
+          <div class="pc-value accent">${fmtMoney(p.total_capital, p.currency)}</div>
+        </div>
+        <div class="pc-stat">
+          <div class="pc-label">Duration</div>
+          <div class="pc-value">${Math.round(p.duration_months)} Months</div>
+        </div>
+      </div>
+      <div class="pc-footer">
+        <div class="pc-dates">${p.start_date.slice(0,7)} — ${p.end_date.slice(0,7)}</div>
+        <a href="index.html?proj=${encodeURIComponent(p.project_name)}&start=${p.start_date}&end=${p.end_date}&capital=${p.total_capital}&currency=${p.currency}" class="pc-action">Analyze ↗</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterProjects() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = allProjects.filter(p => 
+    p.project_name.toLowerCase().includes(query)
+  );
+  renderProjects(filtered);
+}
+
+fetchProjects();
+</script>
+</body>
+</html>
