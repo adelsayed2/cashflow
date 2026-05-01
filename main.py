@@ -21,7 +21,7 @@ load_dotenv()
 app = FastAPI(
     title="Construction Cash Flow API",
     description="S-curve rational polynomial cash flow calculator and project manager",
-    version="1.1.1",
+    version="1.1.2",
 )
 
 app.add_middleware(
@@ -31,17 +31,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Prioritize Internal URL for Render-to-Render communication
-DATABASE_URL = os.getenv("INTERNAL_DATABASE_URL") or os.getenv("DATABASE_URL")
-
 def get_db_conn():
-    if not DATABASE_URL:
-        logger.error("DATABASE_URL not found in environment variables.")
+    # Read environment variables inside the function to ensure we get the latest state
+    db_url = os.getenv("INTERNAL_DATABASE_URL") or os.getenv("DATABASE_URL")
+    
+    if not db_url:
+        logger.error("Neither INTERNAL_DATABASE_URL nor DATABASE_URL found.")
         return None
+    
     try:
         # On Render, external connections usually need sslmode=require
-        # We can append it if it's a render.com host and not already present
-        conn_str = DATABASE_URL
+        conn_str = db_url
         if "render.com" in conn_str and "sslmode" not in conn_str:
             separator = "&" if "?" in conn_str else "?"
             conn_str += f"{separator}sslmode=require"
@@ -129,19 +129,17 @@ def _compute_cashflow(start: date, end: date, total_capital: float, currency: st
     }
     return summary, rows
 
-class CashFlowRequest(BaseModel):
-    start_date:    date
-    end_date:      date
-    total_capital: float
-    currency:      Optional[str] = "USD"
-    project_name:  Optional[str] = None
-
 @app.get("/api/health", tags=["health"])
 def health():
+    db_url = os.getenv("DATABASE_URL")
+    internal_url = os.getenv("INTERNAL_DATABASE_URL")
+    
     return {
         "status": "ok", 
-        "version": "1.1.1", 
-        "db_configured": DATABASE_URL is not None,
+        "version": "1.1.2", 
+        "db_url_present": db_url is not None,
+        "internal_url_present": internal_url is not None,
+        "db_url_preview": f"{db_url[:15]}..." if db_url else None,
         "environment": "render" if os.getenv("RENDER") else "local"
     }
 
@@ -149,7 +147,15 @@ def health():
 def get_projects(limit: int = 50, offset: int = 0):
     conn = get_db_conn()
     if not conn:
-        raise HTTPException(status_code=503, detail="Database connection failed. Ensure DATABASE_URL is set in Render Dashboard.")
+        # Provide more detail in the exception message for debugging
+        db_url = os.getenv("DATABASE_URL")
+        internal_url = os.getenv("INTERNAL_DATABASE_URL")
+        detail = "Database connection failed. "
+        if not db_url and not internal_url:
+            detail += "Missing environment variables."
+        else:
+            detail += "Check your database logs or network access."
+        raise HTTPException(status_code=503, detail=detail)
     try:
         cur = conn.cursor()
         cur.execute("SELECT * FROM v_projects_summary LIMIT %s OFFSET %s", (limit, offset))
