@@ -46,7 +46,9 @@ We have centralized all operations in the `./db.sh` helper script:
 | :--- | :--- |
 | `./db.sh up` | Start the local PostgreSQL Docker container |
 | `./db.sh sync` | **Run the full sync pipeline** (Migrate + Refresh) |
+| `./db.sh push` | **Push local data to Render (Production)** |
 | `./db.sh shell` | Open a psql terminal into the local DB |
+
 | `./db.sh logs` | View database logs |
 | `./db.sh down` | Stop the local database |
 

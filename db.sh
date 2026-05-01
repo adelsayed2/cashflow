@@ -17,15 +17,17 @@ case "$1" in
     docker exec -it cashflow-db psql -U cashflow_user -d cashflow_local
     ;;
   sync)
-
     echo "Migrating data from SQLite..."
     ./venv/bin/python3 scratch/migrate_sqlite.py
     echo "Refreshing summaries and cashflows..."
     PYTHONPATH=. ./venv/bin/python3 scratch/refresh_summaries.py
     echo "Sync complete!"
     ;;
+  push)
+    ./push_to_render.sh
+    ;;
   *)
-    echo "Usage: ./db.sh {up|down|logs|shell|sync}"
+    echo "Usage: ./db.sh {up|down|logs|shell|sync|push}"
     ;;
 
 esac
