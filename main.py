@@ -175,31 +175,93 @@ def health():
         "environment": "render" if os.getenv("RENDER") else "local"
     }
 
+@app.get("/api/meta", tags=["projects"])
+def get_metadata():
+    conn = get_db_conn()
+    if not conn: return {"countries": [], "sectors": [], "statuses": []}
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT country FROM projects WHERE country IS NOT NULL ORDER BY country")
+        countries = [r["country"] for r in cur.fetchall()]
+        
+        cur.execute("SELECT DISTINCT sector FROM projects WHERE sector IS NOT NULL ORDER BY sector")
+        sectors = [r["sector"] for r in cur.fetchall()]
+        
+        cur.execute("SELECT DISTINCT status FROM projects WHERE status IS NOT NULL ORDER BY status")
+        statuses = [r["status"] for r in cur.fetchall()]
+        
+        cur.close()
+        conn.close()
+        return {"countries": countries, "sectors": sectors, "statuses": statuses}
+    except:
+        if conn: conn.close()
+        return {"countries": [], "sectors": [], "statuses": []}
+
 @app.get("/api/projects", tags=["projects"])
-def get_projects(limit: int = 50, offset: int = 0):
+def get_projects(
+    limit: int = 50, 
+    offset: int = 0,
+    country: Optional[str] = None,
+    sector: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None
+):
     conn = get_db_conn()
     if not conn:
-        db_url = os.getenv("DATABASE_URL")
-        internal_url = os.getenv("INTERNAL_DATABASE_URL")
-        is_render = os.getenv("RENDER") is not None
-        
-        detail = "Database connection failed. "
-        if not db_url and not internal_url:
-            detail += "Missing environment variables (DATABASE_URL/INTERNAL_DATABASE_URL)."
-        elif not is_render:
-            detail += "Local connection attempt timed out. Check if your IP is whitelisted on Render's Access Control or if you are using the correct External Database URL."
-        else:
-            detail += "Internal connection failed. Check Render's service logs."
-            
-        raise HTTPException(status_code=503, detail=detail)
+        raise HTTPException(status_code=503, detail="Database connection failed")
 
     try:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM v_projects_summary LIMIT %s OFFSET %s", (limit, offset))
+        
+        query = """
+            SELECT p.id, p.project_name, p.country, p.sector, p.status, p.total_capital, 
+                   p.currency, p.start_date, p.end_date, p.developer
+            FROM projects p
+            LEFT JOIN project_summary s ON p.id = s.project_id
+            WHERE 1=1
+        """
+        params = []
+        
+        if country:
+            query += " AND p.country = %s"
+            params.append(country)
+        if sector:
+            query += " AND p.sector = %s"
+            params.append(sector)
+        if status:
+            query += " AND p.status = %s"
+            params.append(status)
+        if search:
+            query += " AND (p.project_name ILIKE %s OR p.developer ILIKE %s)"
+            params.extend([f"%{search}%", f"%{search}%"])
+            
+        query += " ORDER BY p.created_at DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        # Get total count for paging
+        count_query = f"SELECT COUNT(*) as total FROM projects p WHERE 1=1"
+        count_params = []
+        if country:
+            count_query += " AND p.country = %s"
+            count_params.append(country)
+        if sector:
+            count_query += " AND p.sector = %s"
+            count_params.append(sector)
+        if status:
+            count_query += " AND p.status = %s"
+            count_params.append(status)
+        if search:
+            count_query += " AND (p.project_name ILIKE %s OR p.developer ILIKE %s)"
+            count_params.extend([f"%{search}%", f"%{search}%"])
+            
+        cur.execute(count_query, tuple(count_params))
+        total = cur.fetchone()["total"]
+        
+        cur.execute(query, tuple(params))
         projects = cur.fetchall()
         cur.close()
         conn.close()
-        return projects
+        return {"projects": projects, "total": total}
     except Exception as e:
         if conn: conn.close()
         logger.error(f"Query error: {e}")
@@ -214,8 +276,14 @@ def get_project_cashflow(project_id: str):
     try:
         cur = conn.cursor()
         
-        # 1. Fetch Summary
-        cur.execute("SELECT * FROM v_projects_summary WHERE id = %s", (project_id,))
+        # 1. Fetch Summary (All project metadata + summary metrics)
+        cur.execute("""
+            SELECT p.*, s.effective_months, s.peak_monthly_spend, s.peak_month_number, 
+                   s.peak_month_date, s.half_capital_month, s.half_capital_date
+            FROM projects p
+            LEFT JOIN project_summary s ON p.id = s.project_id
+            WHERE p.id = %s
+        """, (project_id,))
         summary = cur.fetchone()
         if not summary:
             raise HTTPException(status_code=404, detail="Project not found")
@@ -252,20 +320,59 @@ def get_project_cashflow(project_id: str):
         cur.close()
         conn.close()
         
-        # Convert summary to match _compute_cashflow structure for frontend compatibility
+        # Helper to format dates robustly
+        def fmt_date(d):
+            if not d: return None
+            if hasattr(d, "isoformat"): return d.isoformat()
+            return str(d) # Already a string or other type
+
+        # Helper to parse and clean JSON fields (handles double-encoding)
+        def clean_json_field(val):
+            if not val: return []
+            try:
+                # If it's a string, try parsing it
+                data = json.loads(val) if isinstance(val, str) else val
+                # If it's STILL a string (double encoded), parse again
+                if isinstance(data, str): data = json.loads(data)
+                return data if isinstance(data, list) else [data]
+            except:
+                return [val] if val else []
+
         formatted_summary = {
+            "id":                 str(summary["id"]),
             "project_name":       summary["project_name"],
-            "start_date":         summary["start_date"].isoformat(),
-            "end_date":           summary["end_date"].isoformat(),
-            "duration_months":    float(summary["duration_months"]),
-            "effective_months":   summary.get("effective_months", len(monthly)-1),
-            "total_capital":      float(summary["total_capital"]),
+            "description":        summary["description"],
+            "city":               summary["city"],
+            "country":            summary["country"],
+            "site":               summary["site"],
+            "sector":             summary["sector"],
+            "status":             summary["status"],
+            "funding_type":       summary["funding_type"],
+            "developer":          summary["developer"],
+            "main_contractor":    summary["main_contractor"],
+            "architect":          summary["architect"],
+            "pmc":                summary["pmc"],
+            "mep_contractor":     summary["mep_contractor"],
+            "structural_engineer": summary["structural_engineer"],
+            "capacity":           summary["capacity"],
+            "capacity_unit":      summary["capacity_unit"],
+            "size_sqm":           summary["size_sqm"],
+            "start_date":         fmt_date(summary["start_date"]),
+            "end_date":           fmt_date(summary["end_date"]),
+            "contract_award_date": fmt_date(summary["contract_award_date"]),
+            "duration_months":    float(summary["duration_months"]) if summary["duration_months"] else 0,
+            "effective_months":   summary.get("effective_months", 0) or 0,
+            "total_capital":      float(summary["total_capital"]) if summary["total_capital"] else 0,
             "currency":           summary["currency"],
             "peak_monthly_spend": float(summary["peak_monthly_spend"]) if summary["peak_monthly_spend"] else 0,
             "peak_month_number":  summary["peak_month_number"],
-            "peak_month_date":    summary["peak_month_date"].isoformat() if summary["peak_month_date"] else None,
+            "peak_month_date":    fmt_date(summary["peak_month_date"]),
             "half_capital_month": summary["half_capital_month"],
-            "half_capital_date":  summary["half_capital_date"].isoformat() if summary["half_capital_date"] else None,
+            "half_capital_date":  fmt_date(summary["half_capital_date"]),
+            "sources":            clean_json_field(summary["sources"]),
+            "tags":               clean_json_field(summary["tags"]),
+            "x_links":            clean_json_field(summary["x_links"]),
+            "last_audited":       fmt_date(summary["last_audited"]),
         }
 
         # Format monthly rows

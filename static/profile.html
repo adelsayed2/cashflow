@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Profile — Construction Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0c10;
+    --surface:   #12151c;
+    --surface2:  #1a1e28;
+    --border:    rgba(255,255,255,0.06);
+    --accent:    #4af0b0;
+    --accent2:   #378ADD;
+    --text:      #e8eaf0;
+    --muted:     #6b7280;
+    --mono:      'DM Mono', monospace;
+    --display:   'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+    padding-bottom: 5rem;
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+  }
+  .nav-back {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+  }
+  .nav-back:hover { color: var(--accent); }
+
+  .actions { display: flex; gap: 12px; }
+  .btn {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+  }
+  .btn-outline { background: none; border: 1px solid var(--border); color: var(--muted); }
+  .btn-outline:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-primary { background: var(--accent2); color: white; }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* ── Hero ── */
+  .hero {
+    margin-bottom: 3rem;
+  }
+  .hero-meta {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag {
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+  }
+  .tag-status { color: var(--amber); border-color: rgba(240,168,48,0.3); }
+
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+  }
+  .hero-desc {
+    font-size: 1.1rem;
+    color: var(--muted);
+    max-width: 800px;
+    line-height: 1.6;
+  }
+
+  /* ── Bento Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+  }
+  .card-lg { grid-column: span 2; }
+  .card-full { grid-column: 1 / -1; }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title::after { content: ''; flex-grow: 1; height: 1px; background: var(--border); }
+
+  /* ── Info Rows ── */
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .info-row:last-child { border: none; }
+  .info-label { font-size: 13px; color: var(--muted); }
+  .info-value { font-size: 14px; font-weight: 600; text-align: right; }
+
+  /* ── Stakeholders ── */
+  .stakeholder-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .sh-item { display: flex; flex-direction: column; gap: 4px; }
+  .sh-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  .sh-value { font-size: 15px; font-weight: 700; color: var(--text); }
+
+  /* ── Metrics ── */
+  .big-metric { margin-bottom: 1.5rem; }
+  .bm-value { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; color: var(--accent); }
+  .bm-label { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  /* ── Sources ── */
+  .source-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .source-item {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent2);
+    text-decoration: none;
+    padding: 6px 12px;
+    background: rgba(55,138,221,0.1);
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  .source-item:hover { background: rgba(55,138,221,0.2); }
+
+  /* ── S-Curve Preview ── */
+  .chart-container { height: 350px; position: relative; }
+
+  /* ── Table Styling ── */
+  .card-full { grid-column: 1 / -1; }
+  .table-scroll { overflow-x: auto; margin-top: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: right; }
+  th { padding: 12px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text); }
+  th:first-child, td:first-child { text-align: left; }
+  
+  .phase-pill {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .export-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .export-btn:hover { border-color: var(--accent); background: rgba(74,240,176,0.05); }
+
+  #statusBar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 8px;
+    background: var(--accent2);
+    color: white;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: center;
+    display: none;
+    z-index: 1000;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+    height: 1em;
+    display: inline-block;
+    width: 100%;
+  }
+  @keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .card-lg { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+
+<div id="statusBar">Loading project intelligence...</div>
+
+<div class="container">
+  <header>
+    <a href="projects.html" class="nav-back">← Back to Database</a>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="window.print()">Export PDF</button>
+      <a href="" id="analyzeBtn" class="btn btn-primary">Open Cashflow Dashboard</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-meta" id="heroMeta">
+      <span class="skeleton" style="width: 80px"></span>
+      <span class="skeleton" style="width: 60px"></span>
+    </div>
+    <h1 id="projName"><span class="skeleton" style="width: 60%"></span></h1>
+    <p class="hero-desc" id="projDesc">
+      <span class="skeleton"></span>
+      <span class="skeleton" style="width: 80%"></span>
+      <span class="skeleton" style="width: 40%"></span>
+    </p>
+  </section>
+
+  <div class="grid">
+    <!-- Financial Essentials -->
+    <div class="card">
+      <div class="card-title">Financial Essentials</div>
+      <div class="big-metric">
+        <div class="bm-label">Total Capital</div>
+        <div class="bm-value" id="valCapital">...</div>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Currency</span>
+        <span class="info-value" id="valCurrency">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Funding Type</span>
+        <span class="info-value" id="valFunding">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Status</span>
+        <span class="info-value" id="valStatus">...</span>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="card">
+      <div class="card-title">Timeline</div>
+      <div class="info-row">
+        <span class="info-label">Start Date</span>
+        <span class="info-value" id="valStart">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Completion</span>
+        <span class="info-value" id="valEnd">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Duration</span>
+        <span class="info-value" id="valDuration">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Award Date</span>
+        <span class="info-value" id="valAward">...</span>
+      </div>
+    </div>
+
+    <!-- Location & Sector -->
+    <div class="card">
+      <div class="card-title">Geography & Sector</div>
+      <div class="info-row">
+        <span class="info-label">Country</span>
+        <span class="info-value" id="valCountry">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">City</span>
+        <span class="info-value" id="valCity">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Site</span>
+        <span class="info-value" id="valSite">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Sector</span>
+        <span class="info-value" id="valSector">...</span>
+      </div>
+    </div>
+
+    <!-- Stakeholders -->
+    <div class="card card-lg">
+      <div class="card-title">Project Stakeholders</div>
+      <div class="stakeholder-grid">
+        <div class="sh-item">
+          <div class="sh-label">Developer</div>
+          <div class="sh-value" id="shDeveloper">...</div>
+        </div>
+        <div class="sh-item">
+          <div class="sh-label">Main Contractor</div>
+          <div class="sh-value" id="shContractor">...</div>
+        </div>
+        <div class="sh-item">
+          <div class="sh-label">Architect / Lead Designer</div>
+          <div class="sh-value" id="shArchitect">...</div>
+        </div>
+        <div class="sh-item">
+          <div class="sh-label">Project Management (PMC)</div>
+          <div class="sh-value" id="shPMC">...</div>
+        </div>
+        <div class="sh-item">
+          <div class="sh-label">MEP Contractor</div>
+          <div class="sh-value" id="shMEP">...</div>
+        </div>
+        <div class="sh-item">
+          <div class="sh-label">Structural Engineer</div>
+          <div class="sh-value" id="shStruct">...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Technical Scale -->
+    <div class="card">
+      <div class="card-title">Technical Scale</div>
+      <div class="info-row">
+        <span class="info-label">Capacity</span>
+        <span class="info-value" id="techCapacity">...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Size (SQM)</span>
+        <span class="info-value" id="techSize">...</span>
+      </div>
+    </div>
+
+    <!-- S-Curve Preview -->
+    <div class="card card-full">
+      <div class="card-title">S-Curve Performance Preview</div>
+      <div class="chart-container">
+        <canvas id="miniChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Milestones Table -->
+    <div class="card card-full">
+      <div class="card-title" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px;">Milestone Schedule — Derived from S-Curve</div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Milestone</th>
+              <th style="text-align: left;">Threshold</th>
+              <th>Target Date</th>
+              <th>Month</th>
+              <th>Capital Deployed</th>
+              <th>Phase</th>
+            </tr>
+          </thead>
+          <tbody id="milestonesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Monthly Breakdown -->
+    <div class="card card-full">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div class="card-title">Monthly breakdown</div>
+        <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Date</th>
+              <th>% Time</th>
+              <th>Monthly spend</th>
+              <th>Cumulative</th>
+              <th>Cum %</th>
+              <th>Phase</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <div class="card card-full">
+      <div class="card-title">System Metadata</div>
+      <div class="info-row" style="border:none">
+        <span class="info-label">Project UUID: <span id="valUUID" style="font-family:var(--mono)">...</span></span>
+        <span class="info-label">Last Audited: <span id="valAudited" style="font-family:var(--mono)">...</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const projId = params.get('id');
+
+const phaseColors = {
+  early:     { bg: 'rgba(55,138,221,0.35)',  text: '#378ADD',  label: 'Early'    },
+  peak:      { bg: 'rgba(74,240,176,0.35)',  text: '#4af0b0',  label: 'Peak'     },
+  wind_down: { bg: 'rgba(240,168,48,0.35)',  text: '#f0a830',  label: 'Wind-down'},
+};
+
+function fmtMoney(v, currency) {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1e9) return sign + (currency || 'SAR') + ' ' + (abs/1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return sign + (currency || 'SAR') + ' ' + (abs/1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return sign + (currency || 'SAR') + ' ' + (abs/1e3).toFixed(0) + 'K';
+  return sign + (currency || 'SAR') + ' ' + abs.toFixed(0);
+}
+
+async function loadProfile() {
+  if (!projId) {
+    document.body.innerHTML = '<div style="padding: 4rem; text-align: center">No project ID provided.</div>';
+    return;
+  }
+
+  const status = document.getElementById('statusBar');
+  status.style.display = 'block';
+
+  try {
+    const res = await fetch(`/api/projects/${projId}/cashflow`);
+    if (!res.ok) throw new Error("Failed to load project profile");
+    const data = await res.json();
+    renderProfile(data);
+  } catch (e) {
+    status.textContent = "Error: " + e.message;
+    status.style.background = "#f87171";
+  } finally {
+    status.style.display = 'none';
+  }
+}
+
+function renderProfile(data) {
+  const p = data.summary;
+  
+  // Hero
+  document.getElementById('projName').textContent = p.project_name;
+  document.getElementById('projDesc').textContent = p.description || "No description provided for this intelligence record.";
+  document.getElementById('heroMeta').innerHTML = `
+    <span class="tag">${p.sector || 'Uncategorized'}</span>
+    <span class="tag tag-status">${p.status || 'Unknown Status'}</span>
+    <span class="tag" style="color:var(--accent2); border-color:var(--accent2)">${p.country}</span>
+  `;
+  document.getElementById('analyzeBtn').href = `index.html?id=${p.id}`;
+
+  // Metrics
+  document.getElementById('valCapital').textContent = fmtMoney(p.total_capital, p.currency);
+  document.getElementById('valCurrency').textContent = p.currency || 'USD';
+  document.getElementById('valFunding').textContent = p.funding_type || 'Unknown';
+  document.getElementById('valStatus').textContent = p.status || 'Unknown';
+
+  // Timeline
+  document.getElementById('valStart').textContent = p.start_date || 'TBD';
+  document.getElementById('valEnd').textContent = p.end_date || 'TBD';
+  document.getElementById('valDuration').textContent = Math.round(p.duration_months || 0) + ' Months';
+  document.getElementById('valAward').textContent = p.contract_award_date || 'TBD';
+
+  // Geography
+  document.getElementById('valCountry').textContent = p.country;
+  document.getElementById('valCity').textContent = p.city || 'TBD';
+  document.getElementById('valSite').textContent = p.site || 'Main Hub';
+  document.getElementById('valSector').textContent = p.sector;
+
+  // Stakeholders
+  document.getElementById('shDeveloper').textContent = p.developer || 'Unknown';
+  document.getElementById('shContractor').textContent = p.main_contractor || 'Tender / Award Pending';
+  document.getElementById('shArchitect').textContent = p.architect || 'Unknown';
+  document.getElementById('shPMC').textContent = p.pmc || 'Unknown';
+  document.getElementById('shMEP').textContent = p.mep_contractor || 'Unknown';
+  document.getElementById('shStruct').textContent = p.structural_engineer || 'Unknown';
+
+  // Technical
+  document.getElementById('techCapacity').textContent = p.capacity ? `${p.capacity} ${p.capacity_unit || ''}` : 'N/A';
+  document.getElementById('techSize').textContent = p.size_sqm ? p.size_sqm.toLocaleString() : 'N/A';
+
+  // Sources
+  document.getElementById('valUUID').textContent = p.id;
+  document.getElementById('valAudited').textContent = p.last_audited ? new Date(p.last_audited).toLocaleString() : 'Never';
+
+  renderMiniChart(data.monthly, data.milestones, p.currency);
+  renderTable(data.monthly, p.currency);
+  renderMilestones(data.milestones, p.currency);
+}
+
+function renderTable(monthly, cur) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = monthly.map(r => {
+    const pc = phaseColors[r.phase] || phaseColors.early;
+    return `<tr>
+      <td style="color:var(--muted)">${r.month_number}</td>
+      <td>${r.month_start}</td>
+      <td style="color:var(--muted)">${r.pct_of_time.toFixed(1)}%</td>
+      <td style="color:#378ADD">${fmtMoney(r.cashflow, cur)}</td>
+      <td>${fmtMoney(r.cum_cashflow, cur)}</td>
+      <td style="color:var(--muted)">${r.cum_pct.toFixed(1)}%</td>
+      <td><span class="phase-pill" style="background:${pc.bg};color:${pc.text}">${pc.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMilestones(milestones, cur) {
+  if (!milestones) return;
+  const tbody = document.getElementById('milestonesBody');
+  tbody.innerHTML = milestones.map(m => {
+    const pc = phaseColors[m.phase] || phaseColors.early;
+    return `<tr>
+      <td style="text-align: left; font-weight: 600; color: var(--text)">${m.id} — ${m.name}</td>
+      <td style="text-align: left; color:var(--muted)">${m.threshold}</td>
+      <td style="font-weight: 600">${m.target_date}</td>
+      <td style="color:var(--muted)">${m.month_number}</td>
+      <td style="font-family: var(--mono); font-weight: 600">${fmtMoney(m.capital_deployed, cur)}</td>
+      <td><span class="phase-pill" style="background:${pc.bg};color:${pc.text}">${pc.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportCSV() {
+  if (!currentData) return;
+  const { summary, monthly } = currentData;
+  const cur = summary.currency;
+  const header = 'month_number,month_start,pct_of_time,period_pct,cashflow,cum_pct,cum_cashflow,phase\n';
+  const rows = monthly.map(r =>
+    `${r.month_number},${r.month_start},${r.pct_of_time},${r.period_pct},${r.cashflow},${r.cum_pct},${r.cum_cashflow},${r.phase}`
+  ).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cashflow_${summary.project_name || 'project'}.csv`;
+  a.click();
+}
+
+function renderMiniChart(monthly, milestones, cur) {
+  if (!monthly || !monthly.length) return;
+  const canvas = document.getElementById('miniChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  const existingChart = Chart.getChart(canvas);
+  if (existingChart) existingChart.destroy();
+
+  const pointRadius = monthly.map(() => 0);
+  const pointBg = monthly.map(() => 'transparent');
+  if (milestones) {
+    milestones.forEach(m => {
+      const m_num = parseInt(m.month_number.replace('M', ''));
+      const idx = monthly.findIndex(r => r.month_number === m_num);
+      if (idx !== -1) {
+        pointRadius[idx] = 4;
+        pointBg[idx] = phaseColors[m.phase] ? phaseColors[m.phase].text : '#fff';
+      }
+    });
+  }
+
+  new Chart(ctx, {
+    data: {
+      labels: monthly.map(r => (r.month_start || '').slice(2, 7)),
+      datasets: [
+        {
+          type: 'line',
+          label: 'Cumulative',
+          data: monthly.map(r => r.cum_cashflow),
+          borderColor: '#4af0b0',
+          backgroundColor: 'rgba(74,240,176,0.06)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: pointRadius,
+          pointBackgroundColor: pointBg,
+          borderWidth: 2,
+          yAxisID: 'yCum',
+          order: 1,
+        },
+        {
+          type: 'bar',
+          label: 'Monthly Spend',
+          data: monthly.map(r => r.cashflow),
+          backgroundColor: monthly.map(r => phaseColors[r.phase]?.bg || 'rgba(55,138,221,0.3)'),
+          yAxisID: 'yMo',
+          order: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1e28',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          titleColor: '#e8eaf0',
+          bodyColor: '#9ca3af',
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: ctx => {
+              if (ctx.dataset.label === 'Cumulative')
+                return ` Cumulative: ${fmtMoney(ctx.parsed.y, cur)} (${monthly[ctx.dataIndex].cum_pct.toFixed(1)}%)`;
+              return ` Monthly: ${fmtMoney(ctx.parsed.y, cur)} (${monthly[ctx.dataIndex].period_pct.toFixed(2)}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#6b7280', font: { size: 10, family: "'DM Mono'" }, maxRotation: 45, autoSkip: true, maxTicksLimit: 14 },
+          grid: { color: 'rgba(255,255,255,0.03)' },
+        },
+        yCum: {
+          position: 'left',
+          ticks: { color: '#4af0b0', font: { size: 10, family: "'DM Mono'" }, callback: v => fmtMoney(v, cur) },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: `Cumulative (${cur})`, color: '#4af0b0', font: { size: 10 } },
+        },
+        yMo: {
+          position: 'right',
+          ticks: { color: '#378ADD', font: { size: 10, family: "'DM Mono'" }, callback: v => fmtMoney(v, cur) },
+          grid: { display: false },
+          title: { display: true, text: `Monthly (${cur})`, color: '#378ADD', font: { size: 10 } },
+        }
+      }
+    }
+  });
+}
+
+loadProfile();
+</script>
+</body>
+</html>

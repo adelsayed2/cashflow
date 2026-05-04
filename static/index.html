@@ -301,6 +301,7 @@
   <div class="brand">
     <h1>Construction Cash Flow</h1>
     <div class="pill">S-CURVE API</div>
+    <a href="" id="profileLink" class="nav-link hidden" style="margin-left: 1rem; border-color: var(--accent); color: var(--accent)">View Project Profile</a>
   </div>
   <a href="projects.html" class="nav-link">Project Database →</a>
 </header>
@@ -558,7 +559,7 @@ function renderChart(monthly, milestones, cur) {
   chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: monthly.map(r => (r.month_start || '????-??').slice(0,7)),
+      labels: monthly.map(r => (r.month_start || 'TBD').slice(0,7)),
       datasets: [
         {
           type: 'line',
@@ -689,6 +690,11 @@ async function checkParams() {
       if (!res.ok) throw new Error("Could not fetch project detail");
       const data = await res.json();
       currentData = data;
+      
+      // Update profile link
+      const pLink = document.getElementById('profileLink');
+      pLink.href = `profile.html?id=${id}`;
+      pLink.classList.remove('hidden');
       
       // Update inputs to match stored data
       document.getElementById('proj').value = (data.summary.project_name || '');
