@@ -235,7 +235,7 @@ def get_projects(
             query += " AND (p.project_name ILIKE %s OR p.developer ILIKE %s)"
             params.extend([f"%{search}%", f"%{search}%"])
             
-        query += " ORDER BY p.created_at DESC LIMIT %s OFFSET %s"
+        query += " ORDER BY (p.start_date IS NOT NULL) DESC, p.start_date DESC, p.created_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         
         # Get total count for paging
