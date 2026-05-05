@@ -215,7 +215,7 @@ def get_projects(
         
         query = """
             SELECT p.id, p.project_name, p.country, p.sector, p.status, p.total_capital, 
-                   p.currency, p.start_date, p.end_date, p.developer
+                   p.currency, p.start_date, p.end_date, p.developer, p.summary
             FROM projects p
             LEFT JOIN project_summary s ON p.id = s.project_id
             WHERE 1=1
@@ -373,6 +373,7 @@ def get_project_cashflow(project_id: str):
             "tags":               clean_json_field(summary["tags"]),
             "x_links":            clean_json_field(summary["x_links"]),
             "last_audited":       fmt_date(summary["last_audited"]),
+            "project_summary":    summary["summary"],
         }
 
         # Format monthly rows

@@ -266,6 +266,10 @@
       <span class="skeleton" style="width: 80%"></span>
       <span class="skeleton" style="width: 40%"></span>
     </p>
+    <div id="summaryCard" style="display:none; margin-top: 2rem; padding: 1.5rem; background: rgba(74,240,176,0.03); border: 1px solid rgba(74,240,176,0.15); border-radius: 16px;">
+      <div class="card-title" style="margin-bottom: 1rem; color: var(--accent)">Intelligence Briefing</div>
+      <p id="projSummary" style="font-size: 0.95rem; color: var(--text); line-height: 1.7; font-style: italic;"></p>
+    </div>
   </section>
 
   <div class="grid">
@@ -486,6 +490,12 @@ function renderProfile(data) {
   // Hero
   document.getElementById('projName').textContent = p.project_name;
   document.getElementById('projDesc').textContent = p.description || "No description provided for this intelligence record.";
+  
+  if (p.project_summary) {
+    document.getElementById('summaryCard').style.display = 'block';
+    document.getElementById('projSummary').textContent = p.project_summary;
+  }
+
   document.getElementById('heroMeta').innerHTML = `
     <span class="tag">${p.sector || 'Uncategorized'}</span>
     <span class="tag tag-status">${p.status || 'Unknown Status'}</span>

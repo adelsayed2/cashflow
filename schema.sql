@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS projects (
     tags            JSONB,
     x_links         JSONB,
     last_audited    TIMESTAMPTZ,
+    summary         TEXT DEFAULT '',
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
