@@ -197,14 +197,14 @@ def get_metadata():
     if not conn: return {"countries": [], "sectors": [], "statuses": []}
     try:
         cur = conn.cursor()
-        cur.execute("SELECT DISTINCT country FROM projects WHERE country IS NOT NULL AND country != '' ORDER BY country")
-        countries = [r["country"] for r in cur.fetchall()]
+        cur.execute("SELECT country, COUNT(*) as count FROM projects WHERE country IS NOT NULL AND country != '' GROUP BY country ORDER BY country")
+        countries = [{"name": r["country"], "count": r["count"]} for r in cur.fetchall()]
         
-        cur.execute("SELECT DISTINCT sector FROM projects WHERE sector IS NOT NULL AND sector != '' ORDER BY sector")
-        sectors = [r["sector"] for r in cur.fetchall()]
+        cur.execute("SELECT sector, COUNT(*) as count FROM projects WHERE sector IS NOT NULL AND sector != '' GROUP BY sector ORDER BY sector")
+        sectors = [{"name": r["sector"], "count": r["count"]} for r in cur.fetchall()]
         
-        cur.execute("SELECT DISTINCT status FROM projects WHERE status IS NOT NULL AND status != '' ORDER BY status")
-        statuses = [r["status"] for r in cur.fetchall()]
+        cur.execute("SELECT status, COUNT(*) as count FROM projects WHERE status IS NOT NULL AND status != '' GROUP BY status ORDER BY status")
+        statuses = [{"name": r["status"], "count": r["count"]} for r in cur.fetchall()]
         
         cur.close()
         conn.close()
@@ -220,8 +220,8 @@ def get_countries():
     if not conn: return []
     try:
         cur = conn.cursor()
-        cur.execute("SELECT DISTINCT country FROM projects WHERE country IS NOT NULL AND country != '' ORDER BY country")
-        countries = [r["country"] for r in cur.fetchall()]
+        cur.execute("SELECT country, COUNT(*) as count FROM projects WHERE country IS NOT NULL AND country != '' GROUP BY country ORDER BY country")
+        countries = [{"name": r["country"], "count": r["count"]} for r in cur.fetchall()]
         cur.close()
         conn.close()
         return countries

@@ -304,8 +304,8 @@ async function loadMetadata() {
       const el = document.getElementById(id);
       list.forEach(item => {
         const opt = document.createElement('option');
-        opt.value = item;
-        opt.textContent = item;
+        opt.value = item.name;
+        opt.textContent = `${item.name} (${item.count})`;
         el.appendChild(opt);
       });
     };
