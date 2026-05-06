@@ -18,6 +18,13 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+class CashFlowRequest(BaseModel):
+    start_date: date
+    end_date: date
+    total_capital: float
+    currency: str = "USD"
+    project_name: Optional[str] = None
+
 app = FastAPI(
     title="Construction Cash Flow API",
     description="S-curve rational polynomial cash flow calculator and project manager",
@@ -215,7 +222,9 @@ def get_projects(
         
         query = """
             SELECT p.id, p.project_name, p.country, p.sector, p.status, p.total_capital, 
-                   p.currency, p.start_date, p.end_date, p.developer, p.summary
+                   p.currency, p.start_date, p.end_date, p.developer, p.summary,
+                   p.main_contractor, p.lead_consultant, p.architect, p.pmc, p.cost_consultant,
+                   p.structural_engineer, p.mep_contractor, p.landscape_architect
             FROM projects p
             LEFT JOIN project_summary s ON p.id = s.project_id
             WHERE 1=1
@@ -350,10 +359,13 @@ def get_project_cashflow(project_id: str):
             "funding_type":       summary["funding_type"],
             "developer":          summary["developer"],
             "main_contractor":    summary["main_contractor"],
+            "lead_consultant":    summary["lead_consultant"],
             "architect":          summary["architect"],
             "pmc":                summary["pmc"],
-            "mep_contractor":     summary["mep_contractor"],
+            "cost_consultant":    summary["cost_consultant"],
             "structural_engineer": summary["structural_engineer"],
+            "mep_contractor":     summary["mep_contractor"],
+            "landscape_architect": summary["landscape_architect"],
             "capacity":           summary["capacity"],
             "capacity_unit":      summary["capacity_unit"],
             "size_sqm":           summary["size_sqm"],

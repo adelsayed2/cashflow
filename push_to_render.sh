@@ -7,7 +7,7 @@ fi
 
 # We need the remote URL. If it's commented out in .env, we'll try to find it.
 # Look for the line that was previously DATABASE_URL (the render one)
-REMOTE_URL=$(grep "render.com" .env | head -n 1 | sed 's/# //g' | sed 's/DATABASE_URL=//g' | sed 's/REMOTE_DATABASE_URL=//g')
+REMOTE_URL=$(grep "render.com" .env | head -n 1 | sed -E 's/^.*DATABASE_URL=//')
 
 if [ -z "$REMOTE_URL" ]; then
     echo "❌ Error: Remote Database URL not found in .env."
@@ -46,9 +46,9 @@ if [ $? -ne 0 ]; then
 fi
 
 # 2. Upload to Render
-# We use psql to run the dump on the remote server
-echo "📤 Uploading to Render (this may take a moment)..."
-psql "$REMOTE_URL" -f local_dump.sql
+# We use the psql client inside the Docker container since it's already installed there
+echo "📤 Uploading to Render via Docker container (this may take a moment)..."
+cat local_dump.sql | docker exec -i cashflow-db psql "$REMOTE_URL"
 
 if [ $? -ne 0 ]; then
     echo "❌ Error: Failed to upload to Render. Check your internet connection and IP whitelisting."

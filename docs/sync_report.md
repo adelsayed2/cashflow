@@ -28,15 +28,14 @@ The synchronization is now **Reactive**. As soon as `migrate_sqlite.py` inserts 
 - **Instant Population**: `project_summary` and `cashflow_monthly` are populated in real-time, eliminating the need for a separate refresh script.
 - **Safety Floors**: The engine includes safeguards to handle extreme durations and incomplete data without crashing.
 
-## 📊 Current Statistics (As of May 1, 2026)
+## 📊 Current Statistics (As of May 5, 2026)
 
 | Metric | Value |
 | :--- | :--- |
-| **Total Projects Found in Source** | 2,165 |
-| **Cashflow-Optimized Candidates** | 316 |
-| **Successfully Migrated & Processed** | **179** (USD-Only Clean Slate) |
-| **Monthly Periods Generated** | 11,928 |
-| **Skipped (Missing/Unknown Dates)** | 48 |
+| **Total Projects Found in Source** | 2,190 (+94 new) |
+| **Healed & Audited Projects** | 1,037 (+27 new) |
+| **Cashflow-Optimized Candidates** | **866** (Ready for forecasting) |
+| **Successfully Migrated & Processed** | 1987 (Summary Population) |
 
 ## 🛠️ Management Commands
 

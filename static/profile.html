@@ -151,7 +151,7 @@
   /* ── Stakeholders ── */
   .stakeholder-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 1.5rem;
   }
   .sh-item { display: flex; flex-direction: column; gap: 4px; }
@@ -349,6 +349,10 @@
           <div class="sh-value" id="shContractor">...</div>
         </div>
         <div class="sh-item">
+          <div class="sh-label">Lead Consultant</div>
+          <div class="sh-value" id="shLeadConsultant">...</div>
+        </div>
+        <div class="sh-item">
           <div class="sh-label">Architect / Lead Designer</div>
           <div class="sh-value" id="shArchitect">...</div>
         </div>
@@ -357,12 +361,20 @@
           <div class="sh-value" id="shPMC">...</div>
         </div>
         <div class="sh-item">
+          <div class="sh-label">Cost Consultant / QS</div>
+          <div class="sh-value" id="shCost">...</div>
+        </div>
+        <div class="sh-item">
           <div class="sh-label">MEP Contractor</div>
           <div class="sh-value" id="shMEP">...</div>
         </div>
         <div class="sh-item">
           <div class="sh-label">Structural Engineer</div>
           <div class="sh-value" id="shStruct">...</div>
+        </div>
+        <div class="sh-item">
+          <div class="sh-label">Landscape Architect</div>
+          <div class="sh-value" id="shLandscape">...</div>
         </div>
       </div>
     </div>
@@ -524,10 +536,13 @@ function renderProfile(data) {
   // Stakeholders
   document.getElementById('shDeveloper').textContent = p.developer || 'Unknown';
   document.getElementById('shContractor').textContent = p.main_contractor || 'Tender / Award Pending';
+  document.getElementById('shLeadConsultant').textContent = p.lead_consultant || 'Unknown';
   document.getElementById('shArchitect').textContent = p.architect || 'Unknown';
   document.getElementById('shPMC').textContent = p.pmc || 'Unknown';
+  document.getElementById('shCost').textContent = p.cost_consultant || 'Unknown';
   document.getElementById('shMEP').textContent = p.mep_contractor || 'Unknown';
   document.getElementById('shStruct').textContent = p.structural_engineer || 'Unknown';
+  document.getElementById('shLandscape').textContent = p.landscape_architect || 'Unknown';
 
   // Technical
   document.getElementById('techCapacity').textContent = p.capacity ? `${p.capacity} ${p.capacity_unit || ''}` : 'N/A';
