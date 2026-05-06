@@ -230,6 +230,7 @@ def get_countries():
         return []
 
 @app.get("/api/projects", tags=["projects"])
+@cache(expire=3600)
 def get_projects(
     limit: int = 50, 
     offset: int = 0,
@@ -302,6 +303,7 @@ def get_projects(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/projects/{project_id}/cashflow", tags=["projects"])
+@cache(expire=3600)
 def get_project_cashflow(project_id: str):
     conn = get_db_conn()
     if not conn:
