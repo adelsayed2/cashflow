@@ -188,13 +188,13 @@ def get_metadata():
     if not conn: return {"countries": [], "sectors": [], "statuses": []}
     try:
         cur = conn.cursor()
-        cur.execute("SELECT DISTINCT country FROM projects WHERE country IS NOT NULL ORDER BY country")
+        cur.execute("SELECT DISTINCT country FROM projects WHERE country IS NOT NULL AND country != '' ORDER BY country")
         countries = [r["country"] for r in cur.fetchall()]
         
-        cur.execute("SELECT DISTINCT sector FROM projects WHERE sector IS NOT NULL ORDER BY sector")
+        cur.execute("SELECT DISTINCT sector FROM projects WHERE sector IS NOT NULL AND sector != '' ORDER BY sector")
         sectors = [r["sector"] for r in cur.fetchall()]
         
-        cur.execute("SELECT DISTINCT status FROM projects WHERE status IS NOT NULL ORDER BY status")
+        cur.execute("SELECT DISTINCT status FROM projects WHERE status IS NOT NULL AND status != '' ORDER BY status")
         statuses = [r["status"] for r in cur.fetchall()]
         
         cur.close()
@@ -203,6 +203,21 @@ def get_metadata():
     except:
         if conn: conn.close()
         return {"countries": [], "sectors": [], "statuses": []}
+
+@app.get("/api/countries", tags=["projects"])
+def get_countries():
+    conn = get_db_conn()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT country FROM projects WHERE country IS NOT NULL AND country != '' ORDER BY country")
+        countries = [r["country"] for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        return countries
+    except:
+        if conn: conn.close()
+        return []
 
 @app.get("/api/projects", tags=["projects"])
 def get_projects(
