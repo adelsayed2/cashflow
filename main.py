@@ -11,6 +11,10 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 import logging
+import json
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
+from fastapi_cache.decorator import cache
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +41,10 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup():
+    FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
 
 def get_db_conn():
     # If on Render, prefer Internal URL. If local, prefer public DATABASE_URL.
@@ -183,6 +191,7 @@ def health():
     }
 
 @app.get("/api/meta", tags=["projects"])
+@cache(expire=3600)  # Cache for 1 hour
 def get_metadata():
     conn = get_db_conn()
     if not conn: return {"countries": [], "sectors": [], "statuses": []}
@@ -205,6 +214,7 @@ def get_metadata():
         return {"countries": [], "sectors": [], "statuses": []}
 
 @app.get("/api/countries", tags=["projects"])
+@cache(expire=3600)  # Cache for 1 hour
 def get_countries():
     conn = get_db_conn()
     if not conn: return []
